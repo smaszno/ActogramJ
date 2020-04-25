@@ -1,5 +1,7 @@
 package actoj.gui;
 
+import actoj.periodogram.PeriodogramDataForFile;
+import actoj.periodogram.PeriodogramMethod;
 import ij.IJ;
 import ij.gui.Plot;
 import ij.util.Tools;
@@ -17,8 +19,14 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.image.BufferedImage;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import javax.swing.JPanel;
 
@@ -38,6 +46,9 @@ import actoj.periodogram.LombScarglePeriodogram;
 import actoj.periodogram.Periodogram;
 import actoj.util.Filters;
 import actoj.util.PeakFinder;
+
+import static actoj.util.Consts.CSV_LINE_SEPARATOR;
+import static actoj.util.Consts.CSV_VALUE_SEPARATOR;
 
 /**
  * A JComponent representing one actogram plus accompanying data, like
@@ -133,6 +144,7 @@ public class ActogramCanvas extends JPanel
 
 	private final int extVarHeight;
 
+	private Actogram actogram;
 
 	public ActogramCanvas(
 				Actogram actogram,
@@ -150,6 +162,7 @@ public class ActogramCanvas extends JPanel
 		this.nSubdivisions = subd;
 		this.fpUnit = fpUnit;
 		this.extVarHeight = 2 * processor.signalHeight;
+		this.actogram = actogram;
 
 		INT_TOP = (int) (1.5 * getTitleHeight());
 
@@ -169,6 +182,10 @@ public class ActogramCanvas extends JPanel
 		addMouseMotionListener(this);
 
 		setBackground(background);
+	}
+
+	public Actogram getActogram() {
+		return actogram;
 	}
 
 	public Mode getMode() {
@@ -383,8 +400,8 @@ public class ActogramCanvas extends JPanel
 	 * @param method: 0 - Fourier, 1 - Enright, 2 - Lomb-Scargle
 	 */
 	public void calculatePeriodogram(TimeInterval fromPeriod, TimeInterval toPeriod,
-			int method, int nPeaks,
-			float sigma, int stepsize, double pLevel) {
+									 PeriodogramMethod method, int nPeaks,
+									 float sigma, int stepsize, double pLevel, PeriodogramDataForFile periodogramDataForFile) throws IOException {
 
 		if(selStart == null || selCurr == null)
 			throw new RuntimeException("Interval required");
@@ -426,15 +443,15 @@ public class ActogramCanvas extends JPanel
 
 		Periodogram fp = null;
 		switch(method) {
-			case 0:
+			case FOURIER:
 				fp = new FourierPeriodogram(acto, sIdx,
 					cIdx, fromPeriodIdx, toPeriodIdx, pLevel);
 				break;
-			case 1:
+			case CHI_SQUARE:
 				fp = new EnrightPeriodogram(acto, sIdx,
 					cIdx, fromPeriodIdx, toPeriodIdx, pLevel);
 				break;
-			case 2:
+			case LOMB_SCARGLE:
 				fp = new LombScarglePeriodogram(acto, sIdx,
 					cIdx, fromPeriodIdx, toPeriodIdx, pLevel);
 				break;
@@ -503,9 +520,46 @@ public class ActogramCanvas extends JPanel
 			float period = (fromPeriodIdx + p) * factor;
 			plot.addLabel(x, y, df.format(period));
 		}
+		
+		if (periodogramDataForFile.isPrepareFileData())
+			exportPeaks(fromPeriodIdx, factor, peaks, values, pValues, periodogramDataForFile);
+		
 		plot.show();
 	}
 
+	protected void exportPeaks(int fromPeriodIdx, float factor, int[] peaks, float[] values, float[] pValues, PeriodogramDataForFile periodogramDataForFile) {
+		
+
+			ArrayList<Integer> peaksObjectified = new ArrayList<>(peaks.length);
+			for (int peak : peaks)
+				peaksObjectified.add(peak);
+			List<Integer> peaksAbove = peaksObjectified.stream().filter(p -> values[p] >= pValues[p]).collect(Collectors.toList());
+			StringBuilder dataBuffer = periodogramDataForFile.getDataBuffer();
+			dataBuffer.append(String.format("%s%s", actogram.name, CSV_VALUE_SEPARATOR));
+			if (!peaksAbove.isEmpty()) {
+				Float pValue = null;
+				for (Integer peak: peaksAbove) {
+					if (pValue == null) {
+						pValue = pValues[peak];
+						dataBuffer.append(String.format("%f%s", pValue, CSV_VALUE_SEPARATOR));
+					} else {
+						dataBuffer.append(',');
+					}
+					float period = (fromPeriodIdx + peak) * factor;
+					dataBuffer.append(String.format("%f%s%f", period, CSV_VALUE_SEPARATOR, values[peak]));
+				}
+			}	else {
+				dataBuffer.append(String.format("%d%s%d",0, CSV_VALUE_SEPARATOR, 0));
+			}
+			periodogramDataForFile.setMaxPeaks(Math.max(periodogramDataForFile.getMaxPeaks(), peaksAbove.size() > 0 ? peaksAbove.size() : 1));
+			dataBuffer.append(CSV_LINE_SEPARATOR);
+		
+	}
+	
+	
+	
+	
+	
 	public void fitSine() {
 		if(selStart == null || selCurr == null)
 			throw new RuntimeException("Interval required");
@@ -944,6 +998,21 @@ public class ActogramCanvas extends JPanel
 		int idx = (in.y - INT_TOP_ALL)/ bd;
 		return processor.clamp(in.x - INT_LEFT_TOTAL, (idx + 1) * bd);
 	}
+
+	public void selectAll() {
+		Point start = new Point(INT_LEFT_TOTAL, INT_TOP_ALL);
+		Point end = new Point(width - INT_RIGHT - 1, height - INT_BOTTOM - 1);
+		selStart = snap(start);
+		selCurr = snap(end);
+		repaint();
+	}
+
+	public void deselectAll() {
+		selStart = null;
+		selCurr = null;
+		repaint();
+	}
+
 
 	private static Point upper(Point p1, Point p2) {
 		if(p1 == null || p2 == null)

@@ -1,5 +1,7 @@
 package actoj.gui;
 
+import actoj.periodogram.PeriodogramDataForFile;
+import actoj.periodogram.PeriodogramMethod;
 import ij.IJ;
 import ij.gui.GenericDialog;
 
@@ -10,7 +12,11 @@ import java.awt.Insets;
 import java.awt.TextField;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Vector;
@@ -21,6 +27,10 @@ import actoj.activitypattern.OnOffset;
 import actoj.core.Actogram;
 import actoj.core.TimeInterval;
 import actoj.core.TimeInterval.Units;
+import ij.gui.YesNoCancelDialog;
+
+import static actoj.util.Consts.CSV_LINE_SEPARATOR;
+import static actoj.util.Consts.CSV_VALUE_SEPARATOR;
 
 @SuppressWarnings("serial")
 public class ImageCanvas extends JPanel {
@@ -256,6 +266,7 @@ public class ImageCanvas extends JPanel {
 			}
 		}
 		if(first == null) {
+
 			IJ.error("Selection required");
 			return;
 		}
@@ -271,8 +282,7 @@ public class ImageCanvas extends JPanel {
 		double pLevel = 0.05;
 
 		GenericDialog gd = new GenericDialog("Create Periodogram");
-		String[] methods = new String[] {
-			"Fourier", "Chi-Square", "Lomb-Scargle" };
+		String[] methods = Arrays.stream(PeriodogramMethod.values()).map(PeriodogramMethod::title).toArray(String[]::new);
 		gd.addChoice("Method", methods, methods[methodIdx]);
 		Vector<?> v = gd.getChoices();
 		final Choice c = (Choice)v.get(v.size() - 1);
@@ -295,7 +305,7 @@ public class ImageCanvas extends JPanel {
 		if(gd.wasCanceled())
 			return;
 
-		final int m  = gd.getNextChoiceIndex();
+		final PeriodogramMethod m  = PeriodogramMethod.values()[gd.getNextChoiceIndex()];
 		final int fp = (int)gd.getNextNumber();
 		final int tp = (int)gd.getNextNumber();
 		final int np = (int)gd.getNextNumber();
@@ -307,20 +317,55 @@ public class ImageCanvas extends JPanel {
 		new Thread() {
 			@Override
 			public void run() {
+				PeriodogramDataForFile periodogramDataForFile = new PeriodogramDataForFile();
+				periodogramDataForFile.setPrepareFileData(m == PeriodogramMethod.LOMB_SCARGLE);
 				for(ActogramCanvas ac : actograms) {
 					if(ac.hasSelection()) {
 						try {
+							periodogramDataForFile.setActogramGroupName(ac.getActogram().getActogramGroup().name);
 							ac.calculatePeriodogram(fi,
-								ti, m, np, sig, steps, pV);
+								ti, m, np, sig, steps, pV, periodogramDataForFile);
 						} catch(Exception e) {
 							IJ.error(e.getClass() + ": " + e.getMessage());
 							e.printStackTrace();
 						}
 					}
 				}
+				export2File(periodogramDataForFile);
 			}
 		}.start();
 	}
+	
+	private void export2File (PeriodogramDataForFile periodogramDataForFile) {
+		if (periodogramDataForFile.isPrepareFileData()) {
+			try {
+				File peaksFile = new File(String.format("%s_%s", periodogramDataForFile.getActogramGroupName(), "actogram_peaks.csv"));
+				if (peaksFile.exists()) {
+					if (peaksFile.delete())
+						peaksFile.createNewFile();
+				}
+				FileWriter fw = new FileWriter(peaksFile, false);
+				final BufferedWriter bw = new BufferedWriter(fw);
+				StringBuilder titleLine = new StringBuilder();
+				titleLine.append(String.format("Tube%sPN Significance", CSV_VALUE_SEPARATOR));
+				for (int i = 0; i < periodogramDataForFile.getMaxPeaks(); i++)
+					titleLine.append(String.format("%sTau %d [min]%sPN%d", CSV_VALUE_SEPARATOR, (i+1), CSV_VALUE_SEPARATOR, (i+1)));
+				titleLine.append(CSV_LINE_SEPARATOR);
+				bw.write(titleLine.toString());
+				bw.write(periodogramDataForFile.convertToString());
+				bw.flush();
+				bw.close();
+				
+			} catch(Exception e) {
+				IJ.error(e.getClass() + ": " + e.getMessage());
+				e.printStackTrace();
+			}
+
+
+			
+		}
+	}
+	
 
 	public void setCanvasMode(ActogramCanvas.Mode mode) {
 		for(ActogramCanvas ac : actograms)
@@ -482,5 +527,18 @@ public class ImageCanvas extends JPanel {
 		getParent().doLayout();
 		repaint();
 	}
+
+	public void selectAll() {
+		for (ActogramCanvas ac : actograms)
+			ac.selectAll();
+		
+	}
+
+	public void deselectAll() {
+		for (ActogramCanvas ac : actograms)
+			ac.deselectAll();
+
+	}	
+	
 }
 

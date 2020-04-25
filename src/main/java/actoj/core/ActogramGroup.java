@@ -36,6 +36,8 @@ public class ActogramGroup {
 	public ActogramGroup(String name, Actogram[] actograms) {
 		this.name = name;
 		this.actograms = actograms;
+		for(int i = 0; i < actograms.length; i++)
+			actograms[i].setActogramGroup(this);
 		this.length = actograms.length;
 	}
 
@@ -71,6 +73,7 @@ public class ActogramGroup {
 		Actogram[] n = new Actogram[length + 1];
 		System.arraycopy(actograms, 0, n, 0, length);
 		n[length] = a;
+		a.setActogramGroup(this);
 		this.actograms = n;
 		this.length++;
 	}

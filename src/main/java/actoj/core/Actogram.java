@@ -45,6 +45,8 @@ public class Actogram {
 	 */
 	private ArrayList<MarkerList> markers = new ArrayList<MarkerList>();
 
+	
+	private ActogramGroup actogramGroup;
 
 	/**
 	 * Constructur.
@@ -115,6 +117,15 @@ public class Actogram {
 
 	public void replaceMarker(int i, MarkerList ml) {
 		markers.set(i, ml);
+	}
+
+
+	public ActogramGroup getActogramGroup() {
+		return actogramGroup;
+	}
+
+	public void setActogramGroup(ActogramGroup actogramGroup) {
+		this.actogramGroup = actogramGroup;
 	}
 
 	/**
