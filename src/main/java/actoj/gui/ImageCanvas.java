@@ -1,5 +1,6 @@
 package actoj.gui;
 
+import actoj.averageactivity.AverageActivityDataForFile;
 import actoj.periodogram.PeriodogramDataForFile;
 import actoj.periodogram.PeriodogramMethod;
 import ij.IJ;
@@ -240,19 +241,21 @@ public class ImageCanvas extends JPanel {
 		final float p = (float)gd.getNextNumber();
 		final float s = (float)gd.getNextNumber();
 		final TimeInterval pi = new TimeInterval(p, a.unit);
+		AverageActivityDataForFile averageActivityDataForFile = new AverageActivityDataForFile(p, s);
 		new Thread() {
 			@Override
 			public void run() {
 				for(ActogramCanvas ac : actograms) {
 					if(ac.hasSelection()) {
 						try {
-							ac.calculateAverageActivity(pi, s);
+							ac.calculateAverageActivity(pi, s, averageActivityDataForFile);
 						} catch(Exception e) {
 							IJ.error(e.getClass() + ": " + e.getMessage());
 							e.printStackTrace();
 						}
 					}
 				}
+				averageActivityDataForFile.export2File();
 			}
 		}.start();
 	}
@@ -331,40 +334,12 @@ public class ImageCanvas extends JPanel {
 						}
 					}
 				}
-				export2File(periodogramDataForFile);
+				periodogramDataForFile.export2File();
 			}
 		}.start();
 	}
 	
-	private void export2File (PeriodogramDataForFile periodogramDataForFile) {
-		if (periodogramDataForFile.isPrepareFileData()) {
-			try {
-				File peaksFile = new File(String.format("%s_%s", periodogramDataForFile.getActogramGroupName(), "actogram_peaks.csv"));
-				if (peaksFile.exists()) {
-					if (peaksFile.delete())
-						peaksFile.createNewFile();
-				}
-				FileWriter fw = new FileWriter(peaksFile, false);
-				final BufferedWriter bw = new BufferedWriter(fw);
-				StringBuilder titleLine = new StringBuilder();
-				titleLine.append(String.format("Tube%sPN Significance", CSV_VALUE_SEPARATOR));
-				for (int i = 0; i < periodogramDataForFile.getMaxPeaks(); i++)
-					titleLine.append(String.format("%sTau %d [min]%sPN%d", CSV_VALUE_SEPARATOR, (i+1), CSV_VALUE_SEPARATOR, (i+1)));
-				titleLine.append(CSV_LINE_SEPARATOR);
-				bw.write(titleLine.toString());
-				bw.write(periodogramDataForFile.convertToString());
-				bw.flush();
-				bw.close();
-				
-			} catch(Exception e) {
-				IJ.error(e.getClass() + ": " + e.getMessage());
-				e.printStackTrace();
-			}
 
-
-			
-		}
-	}
 	
 
 	public void setCanvasMode(ActogramCanvas.Mode mode) {

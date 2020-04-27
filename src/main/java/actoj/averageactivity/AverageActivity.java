@@ -1,4 +1,4 @@
-package actoj;
+package actoj.averageactivity;
 
 import actoj.core.Actogram;
 

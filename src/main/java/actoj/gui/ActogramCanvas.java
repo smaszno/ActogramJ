@@ -1,5 +1,6 @@
 package actoj.gui;
 
+import actoj.averageactivity.AverageActivityDataForFile;
 import actoj.periodogram.PeriodogramDataForFile;
 import actoj.periodogram.PeriodogramMethod;
 import ij.IJ;
@@ -19,9 +20,6 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.image.BufferedImage;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -30,7 +28,7 @@ import java.util.stream.Collectors;
 
 import javax.swing.JPanel;
 
-import actoj.AverageActivity;
+import actoj.averageactivity.AverageActivity;
 import actoj.activitypattern.Acrophase;
 import actoj.activitypattern.OnOffset;
 import actoj.core.Actogram;
@@ -340,7 +338,7 @@ public class ActogramCanvas extends JPanel
 		repaint();
 	}
 
-	public void calculateAverageActivity(TimeInterval period, float sigma) {
+	public void calculateAverageActivity(TimeInterval period, float sigma, AverageActivityDataForFile averageActivityDataForFile) {
 		if(selStart == null || selCurr == null)
 			throw new RuntimeException("Interval required");
 
@@ -386,6 +384,10 @@ public class ActogramCanvas extends JPanel
 			time,
 			values,
 			Plot.LINE);
+		
+		if (averageActivityDataForFile.isPrepareFileData()) 
+			averageActivityDataForFile.exportAverageActivity(actogram, periodIdx, time, values);
+		
 		int W = 450 + Plot.LEFT_MARGIN + Plot.RIGHT_MARGIN;
 		int H = 200 + Plot.TOP_MARGIN + Plot.BOTTOM_MARGIN;
 		plot.setSize(W, H);
@@ -522,40 +524,12 @@ public class ActogramCanvas extends JPanel
 		}
 		
 		if (periodogramDataForFile.isPrepareFileData())
-			exportPeaks(fromPeriodIdx, factor, peaks, values, pValues, periodogramDataForFile);
+			periodogramDataForFile.exportPeriodogramPeaks(actogram, fromPeriodIdx, factor, peaks, values, pValues);
 		
 		plot.show();
 	}
 
-	protected void exportPeaks(int fromPeriodIdx, float factor, int[] peaks, float[] values, float[] pValues, PeriodogramDataForFile periodogramDataForFile) {
-		
 
-			ArrayList<Integer> peaksObjectified = new ArrayList<>(peaks.length);
-			for (int peak : peaks)
-				peaksObjectified.add(peak);
-			List<Integer> peaksAbove = peaksObjectified.stream().filter(p -> values[p] >= pValues[p]).collect(Collectors.toList());
-			StringBuilder dataBuffer = periodogramDataForFile.getDataBuffer();
-			dataBuffer.append(String.format("%s%s", actogram.name, CSV_VALUE_SEPARATOR));
-			if (!peaksAbove.isEmpty()) {
-				Float pValue = null;
-				for (Integer peak: peaksAbove) {
-					if (pValue == null) {
-						pValue = pValues[peak];
-						dataBuffer.append(String.format("%f%s", pValue, CSV_VALUE_SEPARATOR));
-					} else {
-						dataBuffer.append(',');
-					}
-					float period = (fromPeriodIdx + peak) * factor;
-					dataBuffer.append(String.format("%f%s%f", period, CSV_VALUE_SEPARATOR, values[peak]));
-				}
-			}	else {
-				dataBuffer.append(String.format("%d%s%d",0, CSV_VALUE_SEPARATOR, 0));
-			}
-			periodogramDataForFile.setMaxPeaks(Math.max(periodogramDataForFile.getMaxPeaks(), peaksAbove.size() > 0 ? peaksAbove.size() : 1));
-			dataBuffer.append(CSV_LINE_SEPARATOR);
-		
-	}
-	
 	
 	
 	
