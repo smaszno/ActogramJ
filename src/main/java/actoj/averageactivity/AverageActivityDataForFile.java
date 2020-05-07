@@ -8,12 +8,9 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import static actoj.util.Consts.CSV_LINE_SEPARATOR;
 import static actoj.util.Consts.CSV_VALUE_SEPARATOR;
@@ -84,7 +81,7 @@ public class AverageActivityDataForFile implements DataForFile {
                     aLine = new StringBuilder();
                     HashMap<String, Float> y0s = averageActivityMap.get(x0);
                     aLine.append(String.format("%f", x0));
-                    Collections.sort(namesList);
+      
                     for (String name : namesList) {
                         Float y0 = y0s.get(name);
                         if (y0 != null)
