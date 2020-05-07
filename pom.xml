@@ -83,7 +83,26 @@
 	<properties>
 		<license.licenseName>gpl_v3</license.licenseName>
 		<license.copyrightOwners>Benjamin Schmid</license.copyrightOwners>
+
+			<maven.compiler.target>1.6</maven.compiler.target>
+			<maven.compiler.source>1.6</maven.compiler.source>
+		
 	</properties>
+
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.6.1</version>
+				<configuration>
+					<source>1.6</source>
+					<target>1.6</target>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>	
 	
 	<dependencies>
 		<dependency>

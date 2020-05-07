@@ -241,7 +241,7 @@ public class ImageCanvas extends JPanel {
 		final float p = (float)gd.getNextNumber();
 		final float s = (float)gd.getNextNumber();
 		final TimeInterval pi = new TimeInterval(p, a.unit);
-		AverageActivityDataForFile averageActivityDataForFile = new AverageActivityDataForFile(p, s);
+		final AverageActivityDataForFile averageActivityDataForFile = new AverageActivityDataForFile(p, s);
 		new Thread() {
 			@Override
 			public void run() {
@@ -285,7 +285,13 @@ public class ImageCanvas extends JPanel {
 		double pLevel = 0.05;
 
 		GenericDialog gd = new GenericDialog("Create Periodogram");
-		String[] methods = Arrays.stream(PeriodogramMethod.values()).map(PeriodogramMethod::title).toArray(String[]::new);
+		String [] methods = new String[PeriodogramMethod.values().length];
+		int i = 0;
+		for (PeriodogramMethod pm : PeriodogramMethod.values()) {
+			methods[i++] = pm.title();
+		}
+		
+//		String[] methods = Arrays.stream(PeriodogramMethod.values()).map(PeriodogramMethod::title).toArray(String[]::new);
 		gd.addChoice("Method", methods, methods[methodIdx]);
 		Vector<?> v = gd.getChoices();
 		final Choice c = (Choice)v.get(v.size() - 1);

@@ -25,8 +25,8 @@ public class AverageActivityDataForFile implements DataForFile {
     
     
     boolean prepareFileData = false;
-    HashMap<Float, HashMap<String, Float>> averageActivityMap = new HashMap<>();
-    List<String> namesList = new ArrayList<>();
+    HashMap<Float, HashMap<String, Float>> averageActivityMap = new HashMap<Float, HashMap<String, Float>>();
+    List<String> namesList = new ArrayList<String>();
     
     String period;
     String sigma;
@@ -52,7 +52,7 @@ public class AverageActivityDataForFile implements DataForFile {
             Float timeObj = time[i];
             HashMap<String, Float> ys = averageActivityMap.get(timeObj);
             if (ys == null) {
-                ys = new HashMap<>();
+                ys = new HashMap<String, Float>();
             }
             ys.put(actogram.name, values[i]);
             averageActivityMap.put(timeObj, ys);
@@ -78,7 +78,7 @@ public class AverageActivityDataForFile implements DataForFile {
                     aLine.append(String.format("%s%s", CSV_VALUE_SEPARATOR, name));
                 aLine.append(CSV_LINE_SEPARATOR);
                 bw.write(aLine.toString());
-                List<Float> x0s = new ArrayList<>(averageActivityMap.keySet());
+                List<Float> x0s = new ArrayList<Float>(averageActivityMap.keySet());
                 Collections.sort(x0s);
                 for (Float x0 : x0s) {
                     aLine = new StringBuilder();

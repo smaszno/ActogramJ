@@ -63,10 +63,19 @@ public class PeriodogramDataForFile implements DataForFile {
     public void exportPeriodogramPeaks(Actogram actogram, int fromPeriodIdx, float factor, int[] peaks, float[] values, float[] pValues) {
 
 
-        ArrayList<Integer> peaksObjectified = new ArrayList<>(peaks.length);
+        ArrayList<Integer> peaksObjectified = new ArrayList<Integer>(peaks.length);
         for (int peak : peaks)
             peaksObjectified.add(peak);
-        List<Integer> peaksAbove = peaksObjectified.stream().filter(p -> values[p] >= pValues[p]).collect(Collectors.toList());
+        
+        
+        List<Integer> peaksAbove = new ArrayList<Integer>();
+        for (Integer peak : peaksObjectified) {
+            if (values[peak] >= pValues[peak]) {
+                peaksAbove.add(peak);
+            }
+                
+        }
+        //List<Integer> peaksAbove = peaksObjectified.stream().filter(p -> values[p] >= pValues[p]).collect(Collectors.toList());
         StringBuilder dataBuffer = getDataBuffer();
         dataBuffer.append(String.format("%s%s", actogram.name, CSV_VALUE_SEPARATOR));
         if (!peaksAbove.isEmpty()) {
