@@ -84,7 +84,6 @@ public class AverageActivityDataForFile implements DataForFile {
                     aLine = new StringBuilder();
                     HashMap<String, Float> y0s = averageActivityMap.get(x0);
                     aLine.append(String.format("%f", x0));
-                    Collections.sort(namesList);
                     for (String name : namesList) {
                         Float y0 = y0s.get(name);
                         if (y0 != null)
