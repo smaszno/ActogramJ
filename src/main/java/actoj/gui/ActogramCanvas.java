@@ -364,29 +364,54 @@ public class ActogramCanvas extends JPanel
 		float meanVal = averageActivity.getMeanVal();
 		plot.setColor(Color.pink);
 		plot.drawLine(xminmax[0], meanVal, xminmax[1], meanVal);
-		plot.addText(String.format("Mean: %f", meanVal), 0, meanVal);
+		//plot.addText(String.format("Mean: %f", meanVal), 0, meanVal);
 
 		//mean without zero
 		float meanValWithoutZero = averageActivity.getMeanValWithoutZero();
 		plot.setColor(Color.magenta);
 
-
-
 		plot.drawLine(xminmax[0], meanValWithoutZero, xminmax[1], meanValWithoutZero);
-		plot.addText(String.format("Mean w/o 0: %f", meanValWithoutZero), 0, meanValWithoutZero);
+		//plot.addText(String.format("Mean w/o 0: %f", meanValWithoutZero), 0, meanValWithoutZero);
 
-		//24h period
+		//24h period + 1/4 of maximum
 		if (acto.unit != Units.YEARS) {
-			plot.setColor(Color.black);
+
+			float maxPerDay = 0;
+			double lastX = 0;
+			double currentX = 0;
 			for (int i = 0; i< periodIdx; i++) {
+				if (values[i] > maxPerDay) {
+					maxPerDay = values[i];
+				}
+
 				if (time[i] > 0) {
 					int wholeDay = (int) (time[i] % acto.unit.in24Hours);
-					if (wholeDay == 0)
-						plot.drawDottedLine(time[i], yminmax[0], time[i], yminmax[1], 5);
+					if (wholeDay == 0) {
+						lastX = currentX;
+						currentX = time[i];
+						// plot period
+						plot.setColor(Color.black);
+						plot.drawDottedLine(currentX, yminmax[0], currentX, yminmax[1], 5);
+						plot1_4MaxPerDay(plot, lastX, currentX, maxPerDay);
+						maxPerDay = 0;
+					}
 				}
+			}
+			if (maxPerDay > 0) { // no one plotted anything so it is one day
+				if (currentX == 0) {
+					lastX= xminmax[0];
+					currentX = xminmax[1];
+				} else {
+					lastX = currentX;
+					currentX = time[periodIdx -1];
+				}
+
+				plot1_4MaxPerDay(plot, lastX, currentX, maxPerDay);
 			}
 
 		}
+
+
 
 		plot.savePlotObjects();
 
@@ -415,6 +440,12 @@ public class ActogramCanvas extends JPanel
 
 	}
 
+	private void plot1_4MaxPerDay(Plot plot, double xmin, double xmax, float maxPerDay) {
+		maxPerDay = maxPerDay/4;
+		plot.setColor(Color.GREEN);
+		plot.drawLine(xmin, maxPerDay, xmax, maxPerDay);
+	}
+
 
 	public void mouseOperate(MouseEvent e, PlotCanvas plotCanvas, Plot plot, double[] yminmax) {
 
@@ -429,7 +460,7 @@ public class ActogramCanvas extends JPanel
 				imageHeightField.setAccessible(true);
 				int imageWidth = (Integer) imageWidthField.get(plotCanvas);
 				int imageHeight = (Integer) imageHeightField.get(plotCanvas);
-				System.err.println("PLOT CANVAS "+sx+" / "+sy + " : " + ox + " / "+oy+ " : "+imageWidth+" / "+imageHeight);
+
 
 				if (ox < imageWidth && oy < imageHeight) {
 					Method packagePrivateGetCoordinates = Plot.class.getDeclaredMethod("getCoordinates", int.class, int.class);
