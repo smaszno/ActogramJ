@@ -43,6 +43,8 @@ public class ActoToolBar extends JToolBar implements ModeChangeListener {
 		add(makeButton(new DeselectAllAction(win.canvas)));
 		add(makeButton(new FittingAction(win.canvas)));
 		add(makeButton(new AverageActivityAction(win.canvas)));
+		add(makeButton(new AverageActivityOnsetOffsetSaveAction(win.canvas)));
+		add(makeButton(new AverageActivityOnsetOffsetClearAction(win.canvas)));
 		add(makeButton(new NormalizeAction(win)));
 		add(makeButton(new AcrophaseAction(win.canvas)));
 		add(makeButton(new OnOffAction(win.canvas)));

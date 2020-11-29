@@ -1,36 +1,10 @@
 package actoj.gui;
 
-import actoj.averageactivity.AverageActivityDataForFile;
-import actoj.periodogram.PeriodogramDataForFile;
-import actoj.periodogram.PeriodogramMethod;
-import ij.IJ;
-import ij.gui.Plot;
-import ij.util.Tools;
-
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.FontMetrics;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.Point;
-import java.awt.Rectangle;
-import java.awt.RenderingHints;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
-import java.awt.event.MouseMotionListener;
-import java.awt.image.BufferedImage;
-import java.io.IOException;
-import java.text.DecimalFormat;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import javax.swing.JPanel;
-
-import actoj.averageactivity.AverageActivity;
 import actoj.activitypattern.Acrophase;
 import actoj.activitypattern.OnOffset;
+import actoj.averageactivity.AverageActivity;
+import actoj.averageactivity.AverageActivityDataForFile;
+import actoj.averageactivity.OnsetOffset;
 import actoj.core.Actogram;
 import actoj.core.ExternalVariable;
 import actoj.core.MarkerList;
@@ -42,11 +16,33 @@ import actoj.periodogram.EnrightPeriodogram;
 import actoj.periodogram.FourierPeriodogram;
 import actoj.periodogram.LombScarglePeriodogram;
 import actoj.periodogram.Periodogram;
+import actoj.periodogram.PeriodogramDataForFile;
+import actoj.periodogram.PeriodogramMethod;
 import actoj.util.Filters;
 import actoj.util.PeakFinder;
+import ij.IJ;
+import ij.gui.ImageWindow;
+import ij.gui.Plot;
+import ij.gui.PlotCanvas;
+import ij.gui.ImageCanvas;
+import ij.gui.PlotWindow;
+import ij.util.Tools;
 
-import static actoj.util.Consts.CSV_LINE_SEPARATOR;
-import static actoj.util.Consts.CSV_VALUE_SEPARATOR;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.awt.event.MouseMotionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.text.DecimalFormat;
+import java.util.ArrayList;
+import java.util.HashMap;
 
 /**
  * A JComponent representing one actogram plus accompanying data, like
@@ -55,6 +51,7 @@ import static actoj.util.Consts.CSV_VALUE_SEPARATOR;
 @SuppressWarnings("serial")
 public class ActogramCanvas extends JPanel
 			implements MouseMotionListener, MouseListener, MarkerChangeListener {
+
 
 	public static enum Mode {
 		POINTING, FREERUNNING_PERIOD, SELECTING;
@@ -143,6 +140,8 @@ public class ActogramCanvas extends JPanel
 	private final int extVarHeight;
 
 	private Actogram actogram;
+
+	private HashMap <Plot, Boolean> averageActivityPlots = new HashMap<>();
 
 	public ActogramCanvas(
 				Actogram actogram,
@@ -293,7 +292,7 @@ public class ActogramCanvas extends JPanel
 		onML.addMarkerChangeListener(this);
 		org.addMarker(onML);
 		ArrayList<Integer> off = onoff.getOffsets();
-		MarkerList offML = new MarkerList("Offset", off, a.interval.millis, Color.RED);
+		MarkerList offML = new MarkerList("Offset", off, a.interval.millis, Color.MAGENTA);
 		offML.calculateRegression(period);
 		offML.addMarkerChangeListener(this);
 		org.addMarker(offML);
@@ -301,42 +300,6 @@ public class ActogramCanvas extends JPanel
 		repaint();
 	}
 
-	public void calculateOnAndOffsets(float gaussianSigma, float threshold) {
-		if(selStart == null || selCurr == null)
-			throw new RuntimeException("Interval required");
-
-		Point st = upper(selStart, selCurr);
-		Point cu = lower(selStart, selCurr);
-
-		int from = processor.getIndex(st.x, st.y);
-		int to = processor.getIndex(cu.x, cu.y);
-
-		Actogram org = processor.original;
-		Actogram a = org;
-		if(gaussianSigma > 0) {
-			float[] kernel = Filters.makeGaussianKernel(gaussianSigma);
-			a = org.convolve(kernel);
-		}
-
-		from = processor.getIndexInOriginal(from);
-		to = processor.getIndexInOriginal(to);
-		TimeInterval period = new TimeInterval(a.SAMPLES_PER_PERIOD * a.interval.millis);
-
-		OnOffset onoff = new OnOffset();
-		onoff.calculate(a, from, to, period, threshold);
-		ArrayList<Integer> on = onoff.getOnsets();
-		MarkerList onML = new MarkerList("Onset", on, a.interval.millis, Color.RED);
-		onML.calculateRegression(period);
-		onML.addMarkerChangeListener(this);
-		org.addMarker(onML);
-		ArrayList<Integer> off = onoff.getOffsets();
-		MarkerList offML = new MarkerList("Offset", off, a.interval.millis, Color.RED);
-		offML.calculateRegression(period);
-		offML.addMarkerChangeListener(this);
-		org.addMarker(offML);
-
-		repaint();
-	}
 
 	public void calculateAverageActivity(TimeInterval period, float sigma, AverageActivityDataForFile averageActivityDataForFile) {
 		if(selStart == null || selCurr == null)
@@ -363,8 +326,10 @@ public class ActogramCanvas extends JPanel
 
 		int periodIdx = acto.getIndexForTime(period);
 
-		float[] values = AverageActivity.calculateAverageActivity(
+		AverageActivity averageActivity = AverageActivity.calculateAverageActivity(
 				acto, sIdx, cIdx, periodIdx);
+
+		float[] values = averageActivity.getAverageActivity();
 
 		String unit = acto.unit.abbr;
 		float[] time = new float[periodIdx];
@@ -384,10 +349,10 @@ public class ActogramCanvas extends JPanel
 			time,
 			values,
 			Plot.LINE);
-		
-		if (averageActivityDataForFile.isPrepareFileData()) 
+
+		if (averageActivityDataForFile.isPrepareFileData())
 			averageActivityDataForFile.exportAverageActivity(actogram, periodIdx, time, values);
-		
+
 		int W = 450 + Plot.LEFT_MARGIN + Plot.RIGHT_MARGIN;
 		int H = 200 + Plot.TOP_MARGIN + Plot.BOTTOM_MARGIN;
 		plot.setSize(W, H);
@@ -395,8 +360,147 @@ public class ActogramCanvas extends JPanel
 
 		plot.setColor(Color.BLUE);
 		plot.draw();
-		plot.show();
+		//mean
+		float meanVal = averageActivity.getMeanVal();
+		plot.setColor(Color.pink);
+		plot.drawLine(xminmax[0], meanVal, xminmax[1], meanVal);
+		plot.addText(String.format("Mean: %f", meanVal), 0, meanVal);
+
+		//mean without zero
+		float meanValWithoutZero = averageActivity.getMeanValWithoutZero();
+		plot.setColor(Color.magenta);
+
+
+
+		plot.drawLine(xminmax[0], meanValWithoutZero, xminmax[1], meanValWithoutZero);
+		plot.addText(String.format("Mean w/o 0: %f", meanValWithoutZero), 0, meanValWithoutZero);
+
+		//24h period
+		if (acto.unit != Units.YEARS) {
+			plot.setColor(Color.black);
+			for (int i = 0; i< periodIdx; i++) {
+				if (time[i] > 0) {
+					int wholeDay = (int) (time[i] % acto.unit.in24Hours);
+					if (wholeDay == 0)
+						plot.drawDottedLine(time[i], yminmax[0], time[i], yminmax[1], 5);
+				}
+			}
+
+		}
+
+		plot.savePlotObjects();
+
+		averageActivityPlots.put(plot, Boolean.TRUE);
+
+		final PlotWindow averageActivityPlotWindow = plot.show();
+		averageActivityPlotWindow.addWindowListener(new WindowAdapter() {
+			@Override
+			public void windowClosed(WindowEvent e) {
+				averageActivityPlots.remove(averageActivityPlotWindow.getPlot());
+			}
+		});
+
+		PlotCanvas plotCanvas =	((PlotCanvas)averageActivityPlotWindow.getCanvas());
+
+
+
+		plotCanvas.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				mouseOperate(e, plotCanvas, plot, yminmax);
+			}
+		});
+
+		drawAllOnsetsOffsets(yminmax);
+
 	}
+
+
+	public void mouseOperate(MouseEvent e, PlotCanvas plotCanvas, Plot plot, double[] yminmax) {
+
+			int sx = e.getX();
+			int sy = e.getY();
+			int ox = plotCanvas.offScreenX(sx);
+			int oy = plotCanvas.offScreenY(sy);
+			try {
+				Field imageWidthField = ImageCanvas.class.getDeclaredField("imageWidth");
+				imageWidthField.setAccessible(true);
+				Field imageHeightField = ImageCanvas.class.getDeclaredField("imageHeight");
+				imageHeightField.setAccessible(true);
+				int imageWidth = (Integer) imageWidthField.get(plotCanvas);
+				int imageHeight = (Integer) imageHeightField.get(plotCanvas);
+				System.err.println("PLOT CANVAS "+sx+" / "+sy + " : " + ox + " / "+oy+ " : "+imageWidth+" / "+imageHeight);
+
+				if (ox < imageWidth && oy < imageHeight) {
+					Method packagePrivateGetCoordinates = Plot.class.getDeclaredMethod("getCoordinates", int.class, int.class);
+					packagePrivateGetCoordinates.setAccessible(true);
+					String returnValue = (String)
+							packagePrivateGetCoordinates.invoke(plot,ox, oy);
+
+
+					Actogram org = processor.original;
+
+
+					if (e.isShiftDown() || e.isAltDown() || e.isMetaDown()) {
+						if (returnValue != null && !"".equals(returnValue)) {
+							int yIndex = returnValue.indexOf(", Y");
+
+							String xCoordinateText = returnValue.substring(returnValue.indexOf("X=") + 2, yIndex);
+							String yCoordinateText = returnValue.substring(returnValue.indexOf("=", yIndex) + 1);
+							Double xCoordinate = new Double(xCoordinateText);
+
+							if (e.isShiftDown()) {
+								org.addOnsetOffsetPoint(xCoordinate);
+							} else if (e.isControlDown()) {
+								org.clearAllOnsetOffsetPoint();
+
+							} else if (e.isAltDown()) {
+								org.removeOnsetOffsetPoint(xCoordinate);
+							}
+
+							drawAllOnsetsOffsets(yminmax);
+
+						}
+
+					}
+				}
+
+			}
+			catch (Exception ex) {
+				ex.printStackTrace();
+			}
+
+
+
+
+	}
+
+
+	private void drawAllOnsetsOffsets(double[] yminmax) {
+		for (Plot plot : averageActivityPlots.keySet()) {
+			plot.restorePlotObjects();
+			Actogram org = processor.original;
+			for (OnsetOffset oO : org.getOnsetOffsetPointsList()) {
+				plot.setColor(Color.MAGENTA);
+				plot.setLineWidth(1.5f);
+				plot.drawLine(oO.getXForTheWhole(), yminmax[0], oO.getXForTheWhole(), yminmax[1]);
+			}
+			plot.updateImage();
+
+		}
+	}
+
+	public void clearAllOnsetOffsetPoint() {
+		Actogram org = processor.original;
+		org.clearAllOnsetOffsetPoint();
+		for (Plot plot : averageActivityPlots.keySet()) {
+			plot.restorePlotObjects();
+			plot.updateImage();
+		}
+
+	}
+
+
 
 	/**
 	 * @param method: 0 - Fourier, 1 - Enright, 2 - Lomb-Scargle
@@ -522,18 +626,18 @@ public class ActogramCanvas extends JPanel
 			float period = (fromPeriodIdx + p) * factor;
 			plot.addLabel(x, y, df.format(period));
 		}
-		
+
 		if (periodogramDataForFile.isPrepareFileData())
 			periodogramDataForFile.exportPeriodogramPeaks(actogram, fromPeriodIdx, factor, peaks, values, pValues);
-		
+
 		plot.show();
 	}
 
 
-	
-	
-	
-	
+
+
+
+
 	public void fitSine() {
 		if(selStart == null || selCurr == null)
 			throw new RuntimeException("Interval required");
@@ -763,6 +867,9 @@ public class ActogramCanvas extends JPanel
 	}
 
 	private void drawMarkers(DrawingBackend g, MarkerList markers) {
+		if (markers == null || markers.getPositions() == null || markers.getPositions().size() == 0)
+			return;
+
 		g.setFillColor(markers.getColor().getRGB());
 		g.setLineColor(markers.getColor().getRGB());
 		int radius = processor.signalHeight / 4;
@@ -950,12 +1057,14 @@ public class ActogramCanvas extends JPanel
 		int x = INT_LEFT_TOTAL - widths[0] - 5;
 		int y = INT_TOP_ALL + processor.baselineDist + processor.baselineDist;
 		g.moveTo(x, y);
-		g.drawText(numbers[0]);
+		if (numbers[0] != null)
+			g.drawText(numbers[0]);
 		for(int i = 4; i < nLines - 1; i += 5) {
 			x = INT_LEFT_TOTAL - widths[i] - 5;
 			y = INT_TOP_ALL + (i + 1) * processor.baselineDist + processor.baselineDist;
 			g.moveTo(x, y);
-			g.drawText(numbers[i]);
+			if (numbers[i] != null)
+				g.drawText(numbers[i]);
 		}
 	}
 

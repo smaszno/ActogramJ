@@ -1,7 +1,12 @@
 package actoj.core;
 
+import actoj.averageactivity.OnsetOffset;
+
+import java.awt.*;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 
 /**
  * Representation of the data of one actogram.
@@ -45,7 +50,12 @@ public class Actogram {
 	 */
 	private ArrayList<MarkerList> markers = new ArrayList<MarkerList>();
 
-	
+	/**
+	 * A list of points marked on Activity screen for onset offset
+	 */
+	private ArrayList<OnsetOffset> onsetOffsetPointsList = new ArrayList<>();
+
+
 	private ActogramGroup actogramGroup;
 
 	/**
@@ -119,6 +129,38 @@ public class Actogram {
 		markers.set(i, ml);
 	}
 
+	public void addOnsetOffsetPoint(Double xCoordinate) {
+		onsetOffsetPointsList.add(new OnsetOffset(xCoordinate, this.unit));
+	}
+
+	public void removeOnsetOffsetPoint(Double xCoordinate) {
+		if (onsetOffsetPointsList.size() > 0) {
+			onsetOffsetPointsList.sort(Comparator.comparing(o -> ((Double) o.getXForTheWhole())));
+			int removeAt = onsetOffsetPointsList.size() - 1;
+			if (removeAt > 0) {
+				for (int i = 1; i < onsetOffsetPointsList.size(); i++) {
+					Double current = onsetOffsetPointsList.get(i).getXForTheWhole();
+					Double previous = onsetOffsetPointsList.get(i-1).getXForTheWhole();
+					if (xCoordinate < current) {
+						boolean closerToCurrent = Math.abs(xCoordinate - previous) > Math.abs(current - xCoordinate);
+						removeAt = closerToCurrent ? i : i - 1;
+						break;
+					}
+				}
+			}
+			onsetOffsetPointsList.remove(removeAt);
+
+		}
+
+	}
+
+	public void clearAllOnsetOffsetPoint() {
+		onsetOffsetPointsList.clear();
+	}
+
+	public ArrayList<OnsetOffset> getOnsetOffsetPointsList() {
+		return onsetOffsetPointsList;
+	}
 
 	public ActogramGroup getActogramGroup() {
 		return actogramGroup;

@@ -1,6 +1,7 @@
 package actoj.gui;
 
 import actoj.averageactivity.AverageActivityDataForFile;
+import actoj.averageactivity.OnsetOnffsetDataForFile;
 import actoj.periodogram.PeriodogramDataForFile;
 import actoj.periodogram.PeriodogramMethod;
 import ij.IJ;
@@ -193,16 +194,12 @@ public class ImageCanvas extends JPanel {
 			if(threshold == IJ.CANCELED)
 				return;
 		}
-		final float manualThreshold = threshold;
 		new Thread() {
 			@Override
 			public void run() {
 				for(ActogramCanvas ac : actograms) {
 					if(ac.hasSelection()) {
 						try {
-							if(isManualThreshold)
-								ac.calculateOnAndOffsets(sigma, manualThreshold);
-							else
 								ac.calculateOnAndOffsets(sigma, thresholdMethod);
 						} catch(Exception e) {
 							IJ.error(e.getClass() + ": " + e.getMessage());
@@ -259,6 +256,56 @@ public class ImageCanvas extends JPanel {
 			}
 		}.start();
 	}
+
+
+	public void saveAverageActivityOnsetOffset() {
+		ActogramCanvas first = null;
+		for(ActogramCanvas ac : actograms) {
+			if(ac.hasSelection()) {
+				first = ac;
+				break;
+			}
+		}
+		if(first == null) {
+			IJ.error("Selection required");
+			return;
+		}
+		Actogram a = first.processor.original;
+
+		OnsetOnffsetDataForFile onsetOnffsetDataForFile = new OnsetOnffsetDataForFile();
+		new Thread() {
+			@Override
+			public void run() {
+				for(ActogramCanvas ac : actograms) {
+					if(ac.hasSelection()) {
+						onsetOnffsetDataForFile.exportPointsList(ac.getActogram());
+					}
+				}
+				onsetOnffsetDataForFile.export2File();
+			}
+		}.start();
+	}
+
+	public void clearAverageActivityOnsetOffset() {
+		ActogramCanvas first = null;
+		for(ActogramCanvas ac : actograms) {
+			if(ac.hasSelection()) {
+				first = ac;
+				break;
+			}
+		}
+		new Thread() {
+			@Override
+			public void run() {
+				for(ActogramCanvas ac : actograms) {
+					if(ac.hasSelection()) {
+						ac.clearAllOnsetOffsetPoint();
+					}
+				}
+			}
+		}.start();
+	}
+
 
 	public void calculatePeriodogram() {
 		ActogramCanvas first = null;
@@ -338,9 +385,9 @@ public class ImageCanvas extends JPanel {
 			}
 		}.start();
 	}
-	
 
-	
+
+
 
 	public void setCanvasMode(ActogramCanvas.Mode mode) {
 		for(ActogramCanvas ac : actograms)
@@ -506,14 +553,14 @@ public class ImageCanvas extends JPanel {
 	public void selectAll() {
 		for (ActogramCanvas ac : actograms)
 			ac.selectAll();
-		
+
 	}
 
 	public void deselectAll() {
 		for (ActogramCanvas ac : actograms)
 			ac.deselectAll();
 
-	}	
-	
+	}
+
 }
 

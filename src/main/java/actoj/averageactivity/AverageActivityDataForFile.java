@@ -8,12 +8,9 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import static actoj.util.Consts.CSV_LINE_SEPARATOR;
 import static actoj.util.Consts.CSV_VALUE_SEPARATOR;
@@ -22,15 +19,15 @@ import static actoj.util.Consts.CSV_VALUE_SEPARATOR;
  * Created by piotr.rolinski on 04/04/2020.
  */
 public class AverageActivityDataForFile implements DataForFile {
-    
-    
+
+
     boolean prepareFileData = false;
     HashMap<Float, HashMap<String, Float>> averageActivityMap = new HashMap<>();
     List<String> namesList = new ArrayList<>();
-    
+
     String period;
     String sigma;
-    
+
     public AverageActivityDataForFile(float p, float s) {
         period = String.format("%d", (long) p);
         sigma = String.format("%d", (long) s);
@@ -45,7 +42,7 @@ public class AverageActivityDataForFile implements DataForFile {
     public void setPrepareFileData(boolean prepareFileData) {
         this.prepareFileData = prepareFileData;
     }
-    
+
     public void exportAverageActivity(Actogram actogram, int periodIdx, float[] time, float[] values) {
         namesList.add(actogram.name);
         for (int i = 0; i < periodIdx; i++) {
@@ -56,7 +53,7 @@ public class AverageActivityDataForFile implements DataForFile {
             }
             ys.put(actogram.name, values[i]);
             averageActivityMap.put(timeObj, ys);
-            
+
         }
     }
 
@@ -92,8 +89,8 @@ public class AverageActivityDataForFile implements DataForFile {
                             aLine.append(String.format("%s", CSV_VALUE_SEPARATOR));
                     }
                     aLine.append(CSV_LINE_SEPARATOR);
-                    bw.write(aLine.toString());                    
-                        
+                    bw.write(aLine.toString());
+
                 }
 
                 bw.flush();

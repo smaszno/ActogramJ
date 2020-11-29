@@ -12,12 +12,15 @@ public class AverageActivity {
 	 * @param period The assumed period length in sample units.
 	 * @return
 	 */
-	public static float[] calculateAverageActivity(Actogram acto, int fromData, int toData, int period) {
-		return new AverageActivity(acto, fromData, toData, period).getAverageActivity();
+	public static AverageActivity calculateAverageActivity(Actogram acto, int fromData, int toData, int period) {
+		return new AverageActivity(acto, fromData, toData, period);
 	}
 
 	private final float[] averageActivities;
 	private final int[] counts;
+	
+	private float meanVal = 0;
+	private float meanValWithoutZero = 0;
 
 	private AverageActivity(Actogram acto, int fromData, int toData, int period) {
 
@@ -34,10 +37,50 @@ public class AverageActivity {
 
 		for(int i = 0; i < period; i++)
 			averageActivities[i] /= counts[i];
+
+		calculateMeans();
 	}
 
 	public float[] getAverageActivity() {
 		return averageActivities;
 	}
+
+	private void calculateMeans() {
+		if (averageActivities != null && averageActivities.length > 0) {
+			
+			
+			int count = 0;
+			int countWithoutZero = 0;
+			meanVal = 0;
+			meanValWithoutZero = 0;
+			for (int i = 0; i < averageActivities.length; i++) {
+				
+				float x = averageActivities[i];
+				if (x >=0) {
+					if (x > 0) {
+						countWithoutZero++;
+						meanValWithoutZero += x;
+					}
+					count++;
+					meanVal += x;
+				}
+			}
+			if (count > 0)
+				meanVal = meanVal / count;
+			if (countWithoutZero > 0)
+				meanValWithoutZero = meanValWithoutZero / countWithoutZero;
+
+		}
+	}
+
+	public float getMeanVal() {
+		return meanVal;
+	}
+
+	public float getMeanValWithoutZero() {
+		return meanValWithoutZero;
+	}
+	
+	
 }
 

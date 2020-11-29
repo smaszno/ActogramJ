@@ -44,7 +44,7 @@ public class ActoMenuBar extends JMenuBar implements ModeChangeListener {
 		menu.add(new SelectAllAction(win.canvas));
 		menu.add(new DeselectAllAction(win.canvas));
 		add(menu);
-		
+
 		menu = new JMenu("Analyze");
 		menu.add(new CalculateAction(win));
 		menu.add(new NormalizeAction(win));
@@ -54,6 +54,8 @@ public class ActoMenuBar extends JMenuBar implements ModeChangeListener {
 		menu.add(new OnOffAction(win.canvas));
 		menu.addSeparator();
 		menu.add(new AverageActivityAction(win.canvas));
+		menu.add(new AverageActivityOnsetOffsetSaveAction(win.canvas));
+		menu.add(new AverageActivityOnsetOffsetClearAction(win.canvas));
 		add(menu);
 
 		menu = new JMenu("Help");
