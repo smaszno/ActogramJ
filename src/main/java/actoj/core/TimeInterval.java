@@ -9,12 +9,12 @@ public class TimeInterval {
 	 * the appropriate number of milliseconds in the inMillis field.
 	 */
 	public static enum Units {
-		MILLISECONDS (1, "ms"),
-		SECONDS      (1000, "s"),
-		MINUTES      (1000 * 60, "m"),
-		HOURS        (1000 * 60 * 60, "h"),
-		DAYS         (1000 * 60 * 60 * 24, "d"),
-		YEARS        (1000 * 60 * 60 * 24 * 365L, "y");
+		MILLISECONDS (1, new Long(1000*60*60*24), "ms"),
+		SECONDS      (1000, new Long(60*60*24),"s"),
+		MINUTES      (1000 * 60, new Long(60*24),"m"),
+		HOURS        (1000 * 60 * 60, new Long(24),"h"),
+		DAYS         (1000 * 60 * 60 * 24, new Long(1),"d"),
+		YEARS        (1000 * 60 * 60 * 24 * 365L, null,"y");
 
 		/** Number of milliseconds of this time unit. */
 		public final long inMillis;
@@ -22,10 +22,13 @@ public class TimeInterval {
 		/** Abbreviation char */
 		public final String abbr;
 
+		public final Long in24Hours;
+
 		/** Constructor. */
-		Units(long inMillis, String abbr) {
+		Units(long inMillis, Long in24Hours, String abbr) {
 			this.inMillis = inMillis;
 			this.abbr = abbr;
+			this.in24Hours = in24Hours;
 		}
 	}
 

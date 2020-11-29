@@ -1,5 +1,9 @@
 package actoj.gui;
 
+import actoj.averageactivity.AverageActivityDataForFile;
+import actoj.averageactivity.OnsetOnffsetDataForFile;
+import actoj.periodogram.PeriodogramDataForFile;
+import actoj.periodogram.PeriodogramMethod;
 import ij.IJ;
 import ij.gui.GenericDialog;
 
@@ -10,7 +14,11 @@ import java.awt.Insets;
 import java.awt.TextField;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Vector;
@@ -21,6 +29,10 @@ import actoj.activitypattern.OnOffset;
 import actoj.core.Actogram;
 import actoj.core.TimeInterval;
 import actoj.core.TimeInterval.Units;
+import ij.gui.YesNoCancelDialog;
+
+import static actoj.util.Consts.CSV_LINE_SEPARATOR;
+import static actoj.util.Consts.CSV_VALUE_SEPARATOR;
 
 @SuppressWarnings("serial")
 public class ImageCanvas extends JPanel {
@@ -182,16 +194,12 @@ public class ImageCanvas extends JPanel {
 			if(threshold == IJ.CANCELED)
 				return;
 		}
-		final float manualThreshold = threshold;
 		new Thread() {
 			@Override
 			public void run() {
 				for(ActogramCanvas ac : actograms) {
 					if(ac.hasSelection()) {
 						try {
-							if(isManualThreshold)
-								ac.calculateOnAndOffsets(sigma, manualThreshold);
-							else
 								ac.calculateOnAndOffsets(sigma, thresholdMethod);
 						} catch(Exception e) {
 							IJ.error(e.getClass() + ": " + e.getMessage());
@@ -230,22 +238,74 @@ public class ImageCanvas extends JPanel {
 		final float p = (float)gd.getNextNumber();
 		final float s = (float)gd.getNextNumber();
 		final TimeInterval pi = new TimeInterval(p, a.unit);
+		AverageActivityDataForFile averageActivityDataForFile = new AverageActivityDataForFile(p, s);
 		new Thread() {
 			@Override
 			public void run() {
 				for(ActogramCanvas ac : actograms) {
 					if(ac.hasSelection()) {
 						try {
-							ac.calculateAverageActivity(pi, s);
+							ac.calculateAverageActivity(pi, s, averageActivityDataForFile);
 						} catch(Exception e) {
 							IJ.error(e.getClass() + ": " + e.getMessage());
 							e.printStackTrace();
 						}
 					}
 				}
+				averageActivityDataForFile.export2File();
 			}
 		}.start();
 	}
+
+
+	public void saveAverageActivityOnsetOffset() {
+		ActogramCanvas first = null;
+		for(ActogramCanvas ac : actograms) {
+			if(ac.hasSelection()) {
+				first = ac;
+				break;
+			}
+		}
+		if(first == null) {
+			IJ.error("Selection required");
+			return;
+		}
+		Actogram a = first.processor.original;
+
+		OnsetOnffsetDataForFile onsetOnffsetDataForFile = new OnsetOnffsetDataForFile();
+		new Thread() {
+			@Override
+			public void run() {
+				for(ActogramCanvas ac : actograms) {
+					if(ac.hasSelection()) {
+						onsetOnffsetDataForFile.exportPointsList(ac.getActogram());
+					}
+				}
+				onsetOnffsetDataForFile.export2File();
+			}
+		}.start();
+	}
+
+	public void clearAverageActivityOnsetOffset() {
+		ActogramCanvas first = null;
+		for(ActogramCanvas ac : actograms) {
+			if(ac.hasSelection()) {
+				first = ac;
+				break;
+			}
+		}
+		new Thread() {
+			@Override
+			public void run() {
+				for(ActogramCanvas ac : actograms) {
+					if(ac.hasSelection()) {
+						ac.clearAllOnsetOffsetPoint();
+					}
+				}
+			}
+		}.start();
+	}
+
 
 	public void calculatePeriodogram() {
 		ActogramCanvas first = null;
@@ -256,6 +316,7 @@ public class ImageCanvas extends JPanel {
 			}
 		}
 		if(first == null) {
+
 			IJ.error("Selection required");
 			return;
 		}
@@ -271,8 +332,7 @@ public class ImageCanvas extends JPanel {
 		double pLevel = 0.05;
 
 		GenericDialog gd = new GenericDialog("Create Periodogram");
-		String[] methods = new String[] {
-			"Fourier", "Chi-Square", "Lomb-Scargle" };
+		String[] methods = Arrays.stream(PeriodogramMethod.values()).map(PeriodogramMethod::title).toArray(String[]::new);
 		gd.addChoice("Method", methods, methods[methodIdx]);
 		Vector<?> v = gd.getChoices();
 		final Choice c = (Choice)v.get(v.size() - 1);
@@ -295,7 +355,7 @@ public class ImageCanvas extends JPanel {
 		if(gd.wasCanceled())
 			return;
 
-		final int m  = gd.getNextChoiceIndex();
+		final PeriodogramMethod m  = PeriodogramMethod.values()[gd.getNextChoiceIndex()];
 		final int fp = (int)gd.getNextNumber();
 		final int tp = (int)gd.getNextNumber();
 		final int np = (int)gd.getNextNumber();
@@ -307,20 +367,27 @@ public class ImageCanvas extends JPanel {
 		new Thread() {
 			@Override
 			public void run() {
+				PeriodogramDataForFile periodogramDataForFile = new PeriodogramDataForFile();
+				periodogramDataForFile.setPrepareFileData(m == PeriodogramMethod.LOMB_SCARGLE);
 				for(ActogramCanvas ac : actograms) {
 					if(ac.hasSelection()) {
 						try {
+							periodogramDataForFile.setActogramGroupName(ac.getActogram().getActogramGroup().name);
 							ac.calculatePeriodogram(fi,
-								ti, m, np, sig, steps, pV);
+								ti, m, np, sig, steps, pV, periodogramDataForFile);
 						} catch(Exception e) {
 							IJ.error(e.getClass() + ": " + e.getMessage());
 							e.printStackTrace();
 						}
 					}
 				}
+				periodogramDataForFile.export2File();
 			}
 		}.start();
 	}
+
+
+
 
 	public void setCanvasMode(ActogramCanvas.Mode mode) {
 		for(ActogramCanvas ac : actograms)
@@ -482,5 +549,18 @@ public class ImageCanvas extends JPanel {
 		getParent().doLayout();
 		repaint();
 	}
+
+	public void selectAll() {
+		for (ActogramCanvas ac : actograms)
+			ac.selectAll();
+
+	}
+
+	public void deselectAll() {
+		for (ActogramCanvas ac : actograms)
+			ac.deselectAll();
+
+	}
+
 }
 

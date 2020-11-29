@@ -14,6 +14,8 @@ public class OnOffset {
 	private ArrayList<Integer> offsets;
 
 	public static enum ThresholdMethod {
+
+
 		MedianWithZero {
 			@Override
 			float calculateThreshold(float[] data, int offs, int len) {
@@ -57,9 +59,13 @@ public class OnOffset {
 		Manual {
 			@Override
 			float calculateThreshold(float[] data, int offs, int len) {
-				return (float)IJ.getNumber("Manual threshold", 0);
+				if (manualThreshold == null)
+				 manualThreshold = (float)IJ.getNumber("Manual threshold", 0);
+				return manualThreshold;
 			}
 		};
+
+		Float manualThreshold = null;
 
 		abstract float calculateThreshold(float[] data, int offs, int len);
 	}
@@ -92,22 +98,6 @@ public class OnOffset {
 		}
 	}
 
-	public void calculate(Actogram a, int from, int to, TimeInterval T, float threshold) {
-		int period = (int)Math.round(T.millis / a.interval.millis); // a.SAMPLES_PER_PERIOD;
-
-		float[] data = a.getData();
-		int l = (to - from) / period;
-
-		onsets  = new ArrayList<Integer>(l);
-		offsets = new ArrayList<Integer>(l);
-		int[] h1h2 = new int[2];
-		for(int d = 0; d < l; d++) {
-			int offs = from + d * period;
-			optimizePeriod(data, offs, period, h1h2, threshold);
-			onsets.add(offs + h1h2[0]);
-			offsets.add(offs + h1h2[1]);
-		}
-	}
 
 	public ArrayList<Integer> getOnsets() {
 		return onsets;

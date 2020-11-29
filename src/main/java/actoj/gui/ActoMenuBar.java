@@ -5,19 +5,7 @@ import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 
-import actoj.gui.actions.AcrophaseAction;
-import actoj.gui.actions.AverageActivityAction;
-import actoj.gui.actions.CalculateAction;
-import actoj.gui.actions.CalibAction;
-import actoj.gui.actions.ExportPDF;
-import actoj.gui.actions.FittingAction;
-import actoj.gui.actions.HelpAction;
-import actoj.gui.actions.NormalizeAction;
-import actoj.gui.actions.OnOffAction;
-import actoj.gui.actions.OpenAction;
-import actoj.gui.actions.PointerAction;
-import actoj.gui.actions.PropertiesAction;
-import actoj.gui.actions.SelectingAction;
+import actoj.gui.actions.*;
 
 @SuppressWarnings("serial")
 public class ActoMenuBar extends JMenuBar implements ModeChangeListener {
@@ -52,6 +40,11 @@ public class ActoMenuBar extends JMenuBar implements ModeChangeListener {
 		menu.add(new PropertiesAction(win));
 		add(menu);
 
+		menu = new JMenu("Selection");
+		menu.add(new SelectAllAction(win.canvas));
+		menu.add(new DeselectAllAction(win.canvas));
+		add(menu);
+
 		menu = new JMenu("Analyze");
 		menu.add(new CalculateAction(win));
 		menu.add(new NormalizeAction(win));
@@ -61,6 +54,8 @@ public class ActoMenuBar extends JMenuBar implements ModeChangeListener {
 		menu.add(new OnOffAction(win.canvas));
 		menu.addSeparator();
 		menu.add(new AverageActivityAction(win.canvas));
+		menu.add(new AverageActivityOnsetOffsetSaveAction(win.canvas));
+		menu.add(new AverageActivityOnsetOffsetClearAction(win.canvas));
 		add(menu);
 
 		menu = new JMenu("Help");
